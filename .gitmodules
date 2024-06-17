@@ -1,3 +1,6 @@
 [submodule "croco"]
 	path = croco
 	url = https://github.com/naver/croco
+[submodule "lang-seg"]
+	path = lang-seg
+	url = git@github.com:junyuan-fang/lseg_feature_extraction.git
