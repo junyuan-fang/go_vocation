@@ -9,12 +9,19 @@ import torch
 
 
 def make_pairs(imgs, scene_graph='complete', prefilter=None, symmetrize=True):
+    '''
+    当有三张图片时，每个规则生成的图像对数量分别为：
+
+    complete 图：6 个图像对
+    swin 图：9 个图像对
+    oneref 图：2 个图像对
+    '''
     pairs = []
     if scene_graph == 'complete':  # complete graph
         for i in range(len(imgs)):
             for j in range(i):
                 pairs.append((imgs[i], imgs[j]))
-    elif scene_graph.startswith('swin'):
+    elif scene_graph.startswith('swin'): #
         winsize = int(scene_graph.split('-')[1]) if '-' in scene_graph else 3
         pairsid = set()
         for i in range(len(imgs)):
