@@ -47,7 +47,7 @@ def get_args_parser():
     parser.add_argument("--tmp_dir", type=str, default=None, help="value for tempfile.tempdir")
     parser.add_argument("--silent", action='store_true', default=False,
                         help="silence logs")
-    parser.add_argument("--query", type=str, default='oven')###################
+    parser.add_argument("--query", type=str, default='chair')###################
 
     return parser
 
@@ -158,20 +158,17 @@ def convert_semantics_to_rgb(imgs, semantic_segmentations, mask_threshold=0.8):
         rgb_imgs.append(result_img)
 
     return rgb_imgs
-def load_pixelwise_features(input_img_file,device):
+def load_pixelwise_features(input_img_file):
     """
     Load pixelwise features from a file
     """
     tensors = []
     for path in input_img_file:
-        #new_path = path.replace('/color/', '/features/').replace('.jpg', '.pt')
-        file_name = os.path.basename(path)
-        new_file_name = file_name.replace('.jpg', '.pt')
-        new_path = os.path.join('temp', 'feat_lseg', new_file_name)        
-        tensor = torch.load(new_path).to(device)
+        new_path = path.replace('/color/', '/features/').replace('.jpg', '.pt')
+        tensor = torch.load(new_path)
         tensors.append(tensor)
-    return torch.stack(tensors).to(device)
-def semantic_segmentation(features, query, device):
+    return torch.stack(tensors)
+def semantic_segmentation(features, query):
     """
     Perform semantic segmentation on the input image
     return [B,H,W]
@@ -179,7 +176,7 @@ def semantic_segmentation(features, query, device):
     # Load the model
     print(query)
     B, C, H, W = features.shape
-    #device = features[0].device 
+    device = features[0].device 
     model, preprocess = clip.load("ViT-B/32", device=device)
 
     # Encode text using CLIP text encoder
@@ -222,13 +219,12 @@ def get_reconstructed_scene(outdir, model, device, silent, image_size, filelist,
     from a list of images, run dust3r inference, global aligner.
     then run get_3D_model_from_scene
     """
-
     imgs = load_images(filelist, size=image_size, verbose=not silent)#[dict_keys(['img', 'true_shape', 'idx', 'instance'])] dict_keys in a list
     #print(imgs[0]['img'].shape)#torch.Size([1, 3, 240, 320])
     #print(imgs[0]['true_shape'].shape)#(1, 2)
     if query:
-        features = load_pixelwise_features(filelist, device)#[512, H,W]
-        semantic_segmentations = semantic_segmentation(features, query, device)#torch.Size([2, 240, 320])
+        features = load_pixelwise_features(filelist)#[512, H,W]
+        semantic_segmentations = semantic_segmentation(features,query)#torch.Size([2, 240, 320])
     if len(imgs) == 1:
         imgs = [imgs[0], copy.deepcopy(imgs[0])]
         imgs[1]['idx'] = 1
@@ -254,7 +250,8 @@ def get_reconstructed_scene(outdir, model, device, silent, image_size, filelist,
     # Display the scene using trimesh
     #trimesh_scene.show()
 ###########################semamtic segmentation
-    outfile, trimesh_scene = get_3D_model_from_scene(outdir, silent, scene, min_conf_thr, as_pointcloud, mask_sky,
+    if query:
+        outfile, trimesh_scene = get_3D_model_from_scene(outdir, silent, scene, min_conf_thr, as_pointcloud, mask_sky,
                                                      clean_depth, transparent_cams, cam_size, semantic_segmentations)
     # Display the scene using trimesh
     trimesh_scene.show()
@@ -279,6 +276,16 @@ def get_reconstructed_scene(outdir, model, device, silent, image_size, filelist,
         imgs.append(rgb(confs[i]))
 
     return scene, outfile, imgs
+
+def sample_images_uniformly(images, num_samples=15):
+    if len(images) < num_samples:
+        raise ValueError(f"Number of images ({len(images)}) is less than the number of samples ({num_samples})")
+    images = sorted(images)
+    interval = len(images) / num_samples
+    sampled_images = [images[int(i * interval)] for i in range(num_samples)]
+    
+    return sampled_images
+
 def main_demo(tmpdirname, model, device, image_size, input_folder, silent=False, query=None):
     recon_fun = functools.partial(get_reconstructed_scene, tmpdirname, model, device, silent, image_size)
     model_from_scene_fun = functools.partial(get_3D_model_from_scene, tmpdirname, silent)
@@ -294,7 +301,7 @@ def main_demo(tmpdirname, model, device, image_size, input_folder, silent=False,
     if not input_files:
         print("No image files found in the specified folder.")
         return
-    input_files = input_files[:2]###########for pair viewer
+    input_files = sample_images_uniformly(input_files)#[:2]###########for pair viewer
     #input_files = ['/home/fangj1/Code/go_vocation/data/scene_example/color/1539.jpg', '/home/fangj1/Code/go_vocation/data/scene_example/color/1555.jpg']
     print(input_files)
     # Reconstruction options (same as before)
@@ -320,10 +327,11 @@ if __name__ == '__main__':
     parser = get_args_parser()
     args = parser.parse_args()
     # Hardcoded input folder
-    input_folder = '/home/fangj1/Code/go_vocation/data/scene_example/color'
+    input_folder = '/data/scannet_2d/scene0012_01/color'#'/home/fangj1/Code/go_vocation/data/scene_example/color'#'/data/cvpr24-challenge/challenge/data/ChallengeDevelopmentSet_converted/42445935/color'#'/data/go_vocation/data/bottle'#
     query = [args.query,'other']
+    query = None
     print(query)
-    args.image_size = 640/2 #original image size is 640*480
+    args.image_size = 4096/10#640/2 #original image size is 640*480
 
     if args.tmp_dir is not None:
         tmp_path = args.tmp_dir
