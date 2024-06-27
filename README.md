@@ -1,3 +1,8 @@
+`python3 terminal_demo.py --model_name DUSt3R_ViTLarge_BaseDecoder_512_dpt`
+`python3 terminal_demo_global_aligned.py --model_name DUSt3R_ViTLarge_BaseDecoder_512_dpt`
+`python3 demo.py --model_name DUSt3R_ViTLarge_BaseDecoder_512_dpt`
+
+
 ![demo](assets/dust3r.jpg)
 
 Official implementation of `DUSt3R: Geometric 3D Vision Made Easy`  
