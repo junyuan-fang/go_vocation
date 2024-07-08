@@ -28,6 +28,7 @@ conda env create -f environment.yml
 ```
 
 3. Clone feature extraction enabled Lseg
+
  ```  git clone git@github.com:junyuan-fang/lseg_feature_extraction.git```
 
 ## Run
